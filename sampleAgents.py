@@ -34,6 +34,7 @@ import random
 import game
 import util
 import math
+import operator
 # RandomAgent
 #
 # A very simple agent. Just makes a random pick every time that it is
@@ -137,39 +138,44 @@ class PrateekAgent(Agent):
 
 
 class HungryAgent(Agent):
+    def __init__(self):
+         self.last = ""
 
     def getAction(self, state):
-        """ Hungry Agent behaviour"""
-        """ Get all the available Food"""
+        # 1. Get the list of foods items on the grid.
+        # 2. Get the PacMan current location.
+        # 3. Calculate distance between PacMan and all the food items.
+        # 4. Sort it in ascending order to get the nearest food item.
+        # 5. Move the PacMan to the direction.
+        # 6. If legal move, proceed.
+        # 7. If not legal move, get the second nearest item and move. Repeat this till move is legal.
+
+        #(x, y) co ordinates for food items.
         foodList = api.food(state)
-
-        """ Get Hungry Pacman's current location"""
+        # print "length of foodlist: ",len(foodList),"\nfoodList: ",foodList
+        #Current Position of PacMan (x, y)
         currentPacPosition = api.whereAmI(state)
+        distances = {}
 
-        """Get the actions we can try, and remove "STOP" if that is one of them."""
-        legal = api.legalActions(state)
-        if Directions.STOP in legal:
-            legal.remove(Directions.STOP)
-        
-        """ Calculate distance between Food and Hungry Pacman"""
-        distance = []
+        #PacMan (7, 4)
+        #FoodItem (3, 2)
+        #loop over the co ordinates of food items and calculate the distances 
         for i in range(len(foodList)):
-            distance.append(math.sqrt(((currentPacPosition[0]-foodList[i][0])**2)+((currentPacPosition[1]-foodList[i][1])**2)))
-
-        """ Calculate nearest Food coordinate"""
-        nearestFood = foodList[distance.index(min(distance))] # not in use right now
-
-        sortedFoodDist = sorted(distance)
-        sortedFood = []
-        for i in range(len(sortedFoodDist)):
-            sortedFood.append(foodList[sortedFoodDist.index(i)])
+            # print "index: ",i
+            # d = math.sqrt(((currentPacPosition[0] - foodList[i][0]) ** 2)+((currentPacPosition[1] - foodList[i][1]) ** 2))
+            d = util.manhattanDistance(currentPacPosition,foodList[i])
+            distances[foodList[i]] = d
+            # print "Distance Key: ", foodList[i], "Food value: ", d
+        
+        # print "Dictionary for distance and coords pair",distances,"\n","lenght of Dictionary: ",len(distances)
+        #sort the dict based of keys. 
+        sortedDistance = sorted(distances.items(), key=operator.itemgetter(1))
+        # print "sorted distance Dictionary",sortedDistance
         """ get direction to nearest food """
+        legal = api.legalActions(state)
         directionFood = ""
-        # print "distance calculated: ",distance
-        print "sorted food distance: ",sortedFoodDist
-        # print "sorted food coords: ",sorted(sortedFood)
-        for i in sortedFood:
-            foodId = i
+        for i in sortedDistance:
+            foodId = i[0]
             print "targeting food coords:",foodId
             if foodId[0]-currentPacPosition[0] > 0:
                 directionFood = Directions.EAST
@@ -185,165 +191,118 @@ class HungryAgent(Agent):
                 print "------"+"nearestFood = "+ str(foodId)
                 print "------"+"currentPacPosition = "+ str(currentPacPosition)
                 print "Going ",directionFood,"\n"
+                self.last = directionFood
                 return api.makeMove(directionFood, legal)
             else:
                 print "skip to next food"
-                # print "Random Step\n"
-                # return api.makeMove(random.choice(legal), legal)  
+                if self.last in legal:
+                    return api.makeMove(self.last, legal)
                 pass
 
 class SurvivalAgent(Agent):
+    def __init__(self):
+         self.last = ""
 
     def getAction(self, state):
-        """ A function to enable survival of pacman by avoiding ghosts and still behave as hungry agent"""
-
+        """ A function to enable survival of pacman by avoiding ghosts and still behave as hungry agent
+            for a survival agent below steps are considered:
+                1. Identify the distance between PacMan and ghosts
+                2. If any ghost is less than 3 unit distance away from PacMan
+                    a. Identify direction of the ghost
+                    b. move away from that direction towards a legal direction
+                3. Else: Act as a hungry agent
+        """
+        print "***************************START of NEW STATE***************************"
         """ Get all the available Food"""
         foodList = api.food(state)
 
         """ Get current location of Ghosts"""
         ghostLoc = api.ghosts(state)
-        for i in range(len(ghostLoc)):
-            print "Ghost Location: ",ghostLoc[i]
-
+        print "Ghost Location: ",ghostLoc
         """ Get Pacman's current location"""
         currentPacPosition = api.whereAmI(state)
         print "Pacman Location: ", currentPacPosition
 
         distanceList = []
-        #print "Distance to ghosts:"
         for i in range(len(ghostLoc)):
             distanceList.append(util.manhattanDistance(currentPacPosition,ghostLoc[i]))
 
         print "distanceList to Ghost:", distanceList,"\n"
+        print "Closest Ghost is:",ghostLoc[distanceList.index(min(distanceList))]
+        legal = api.legalActions(state)
+        if Directions.STOP in legal:
+            legal.remove(Directions.STOP)
         
-        lifeSaved = 0
+        """ Code for Survival Agent in the IF condition. Pacman acts as Hungry agent in else condition"""
         if min(distanceList) < 3:
-            print "min distance to Ghost:", min(distanceList)
-            lifeSaved = lifeSaved+1
-            print "going to DIE!!!"
-            legal = api.legalActions(state)
-            if Directions.STOP in legal:
-                legal.remove(Directions.STOP)
+            print "Closest Ghost distance is: ",min(distanceList)
+            ghostCoord = ghostLoc[distanceList.index(min(distanceList))]
+
+            """Identify Directions to move"""
+            if ghostCoord[0]-currentPacPosition[0] > 0:
+                directionMove = Directions.WEST
+            elif ghostCoord[0]-currentPacPosition[0] < 0:
+                directionMove = Directions.EAST
+            elif ghostCoord[1]-currentPacPosition[1] > 0:
+                directionMove = Directions.SOUTH   
+            elif ghostCoord[1]-currentPacPosition[1] < 0:
+                directionMove = Directions.NORTH
             
-            """closest Ghost coorindates"""
-            index = distanceList.index(min(distanceList))
-            ghostchacha = ghostLoc[index]
-            print "closest ghost is at: ",ghostchacha, "and Pacman is at: ",currentPacPosition
-            print "Life Saved: ",lifeSaved
-            if ghostchacha[0]-currentPacPosition[0] < 0:
-                if Directions.EAST in legal:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going East\n"
-                    return api.makeMove(Directions.EAST, legal)
+            """Perform move"""
+            if directionMove in legal:
+                print "------"+"nearest Ghost = "+ str(ghostCoord)
+                print "------"+"currentPacPosition = "+ str(currentPacPosition)
+                print "Going ",directionMove,"\n"
+                self.last = directionMove
+                return api.makeMove(directionMove, legal)
+            else:
+                print "Continue the Last Step"
+                if self.last in legal:
+                    return api.makeMove(self.last, legal)
                 else:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)
-            elif ghostchacha[0]-currentPacPosition[0] > 0:
-                if Directions.WEST in legal:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going West\n"
-                    return api.makeMove(Directions.WEST, legal)
-                else:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)
-            elif ghostchacha[1]-currentPacPosition[1] < 0:
-                if Directions.NORTH in legal:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going North\n"
-                    return api.makeMove(Directions.NORTH, legal)
-                else:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)
-            elif ghostchacha[1]-currentPacPosition[1] > 0:
-                if Directions.SOUTH in legal:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going South\n"
-                    return api.makeMove(Directions.SOUTH, legal)   
-                else:
-                    print "------"+"nearestGhost = "+ str(ghostchacha)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)  
-            
+                    print "Last thing to do is leave it to chance"
+                    pick = random.choice(legal)
+                    return api.makeMove(pick, legal)
         else:
-            """Get the actions we can try, and remove "STOP" if that is one of them."""
-            """ Hungry Agent behaviour"""
-            """ Get all the available Food"""
-            foodList = api.food(state)
-
-            """ Get Hungry Pacman's current location"""
-            currentPacPosition = api.whereAmI(state)
-
-            """Get the actions we can try, and remove "STOP" if that is one of them."""
-            legal = api.legalActions(state)
-            if Directions.STOP in legal:
-                legal.remove(Directions.STOP)
-            
-            """ Calculate distance between Food and Hungry Pacman"""
-            distance = []
+            print "Act as HUNGRY AGENT"
+            distances = {}
             for i in range(len(foodList)):
-                distance.append(math.sqrt(((currentPacPosition[0]-foodList[i][0])**2)+((currentPacPosition[1]-foodList[i][1])**2)))
-
-            """ Calculate nearest Food coordinate"""
-            nearestFood = foodList[distance.index(min(distance))]
-
-            """ Steps to eat nearest food"""
-            if nearestFood[0]-currentPacPosition[0] > 0:
-                if Directions.EAST in legal:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going East\n"
-                    return api.makeMove(Directions.EAST, legal)
-                else:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)
-            elif nearestFood[0]-currentPacPosition[0] < 0:
-                if Directions.WEST in legal:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going West\n"
-                    return api.makeMove(Directions.WEST, legal)
-                else:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)
-            elif nearestFood[1]-currentPacPosition[1] > 0:
-                if Directions.NORTH in legal:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going North\n"
-                    return api.makeMove(Directions.NORTH, legal)
-                else:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)
-            elif nearestFood[1]-currentPacPosition[1] < 0:
-                if Directions.SOUTH in legal:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Going South\n"
-                    return api.makeMove(Directions.SOUTH, legal)   
-                else:
-                    print "------"+"nearestFood = "+ str(nearestFood)
-                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
-                    print "Random Step\n"
-                    return api.makeMove(random.choice(legal), legal)  
-
-                
+                d = util.manhattanDistance(currentPacPosition,foodList[i])
+                distances[foodList[i]] = d
             
+            #sort the dict based of keys. 
+            sortedDistance = sorted(distances.items(), key=operator.itemgetter(1))
+            """ get direction to nearest food """
+            directionFood = ""
+            for i in sortedDistance:
+                foodId = i[0]
+                print "targeting food coords:",foodId
+                if foodId[0]-currentPacPosition[0] > 0:
+                    directionFood = Directions.EAST
+                elif foodId[0]-currentPacPosition[0] < 0:
+                    directionFood = Directions.WEST
+                elif foodId[1]-currentPacPosition[1] > 0:
+                    directionFood = Directions.NORTH   
+                elif foodId[1]-currentPacPosition[1] < 0:
+                    directionFood = Directions.SOUTH
+
+                """ Steps to eat nearest food"""                    
+                if directionFood in legal:
+                    print "------"+"nearestFood = "+ str(foodId)
+                    print "------"+"currentPacPosition = "+ str(currentPacPosition)
+                    print "Going ",directionFood,"\n"
+                    self.last = directionFood
+                    return api.makeMove(directionFood, legal)
+                else:
+                    print "skip to next food"
+                    if self.last in legal:
+                        return api.makeMove(self.last, legal)
+                    pass
+        
+
+
+
+
+
             
 
