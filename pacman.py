@@ -1,10 +1,11 @@
+# Improved Frederik Mallmann-Trenn
 # pacman.py
 # ---------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -252,7 +253,6 @@ class GameState:
         Creates an initial game state from a layout array (see layout.py).
         """
         self.data.initialize(layout, numGhostAgents)
-
 ############################################################################
 #                     THE HIDDEN SECRETS OF PACMAN                         #
 #                                                                          #
@@ -270,6 +270,7 @@ class ClassicGameRules:
     """
     def __init__(self, timeout=30):
         self.timeout = timeout
+        self.winssofar = 0
 
     def newGame( self, layout, pacmanAgent, ghostAgents, display, quiet = False, catchExceptions=False):
         agents = [pacmanAgent] + ghostAgents[:layout.getNumGhosts()]
@@ -288,13 +289,21 @@ class ClassicGameRules:
         if state.isWin(): self.win(state, game)
         if state.isLose(): self.lose(state, game)
 
+
+
+
     def win( self, state, game ):
-        if not self.quiet: print "Pacman emerges victorious! Score: %d" % state.data.score
+        if not self.quiet: print "#Pacman emerges victorious! Score: %d" % state.data.score
         game.gameOver = True
+        self.winssofar +=1
+        if not self.quiet: print "#Wins so far: %d" % self.winssofar
+        if not self.quiet: print "-----------------------"
 
     def lose( self, state, game ):
-        if not self.quiet: print "Pacman died! Score: %d" % state.data.score
+        if not self.quiet: print "#Pacman died! Score: %d" % state.data.score
         game.gameOver = True
+        if not self.quiet: print "#Wins so far: %d" % self.winssofar
+        if not self.quiet: print "-----------------------"
 
     def getProgress(self, game):
         return float(game.state.getNumFood()) / self.initialState.getNumFood()
